@@ -1,0 +1,14 @@
+[project]
+name = "mini_gpt"
+version = "0.1.0"
+description = "Eksperymentalna implementacja mini-GPT (Transformer) w PyTorch"
+authors = [ { name = "(Your Name)" } ]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = ["pytest", "black"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

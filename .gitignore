@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+env/
+venv/
+.venv/
+.vscode/
+*.pt
+model_cache.pkl
+*.pth
+dist/
+build/
+__MACOSX/
+*.egg-info/
+.DS_Store

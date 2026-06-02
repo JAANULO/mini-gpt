@@ -47,6 +47,8 @@ Szczegółowy opis wzorów matematycznych i architektury znajdziesz w pliku [MAT
 
 ## 📂 Struktura projektu
 - `main.py` — Główny punkt wejścia (trening + czat).
-- `shared/` — Rdzeń architektury (Transformer i Tokenizer).
+- `mini_gpt/` — Rdzeń architektury (Transformer i Tokenizer).
 - `dane.json` — Zbiór danych treningowych.
 - `model_export.pt` — Wyeksportowane wagi modelu.
+ - `exports/` — Katalog z wyeksportowanymi modelami (np. `model_export.pt`).
+ - `tests/` — Testy i skrypty pomocnicze (np. `test_gpu.py`).

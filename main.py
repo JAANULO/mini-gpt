@@ -16,24 +16,27 @@ import json
 import os
 import hashlib
 import random
+from pathlib import Path
 
-from shared.transformer import MiniGPT, Adam, softmax, URZADZENIE
-from shared.tokenizer   import Tokenizer
+from mini_gpt.transformer import MiniGPT, Adam, softmax, URZADZENIE
+from mini_gpt.tokenizer   import Tokenizer
 
 # ============================================================
 # USTAWIENIA
 # ============================================================
 
-PLIK_DANYCH   = "dane.json"
-PLIK_CACHE    = "model_cache.pkl"  # tu zapisujemy wytrenowany model
-WYMIAR        = 128     # większy wymiar = więcej pojemności
-N_WARSTW      = 4        # więcej warstw = głębszy model
-N_GLOWIC      = 4        # głowice Multi-Head Attention
-DROPOUT       = 0.05      # mniej dropout = lepsze zapamiętanie
-EPOKI         = 3000     # więcej epok = lepsze zapamiętanie
-LR            = 0.001    # wyższy LR = szybsza nauka)
-MAKS_DLUGOSC  = 256      # dłuższy kontekst
-BATCH_SIZE    = 32       # ← NOWE
+PLIK_DANYCH     = "data/dane.json"
+PLIK_CACHE      = "model_cache.pkl"
+KATALOG_EKSPORT = Path("exports")
+PLIK_EKSPORTU    = KATALOG_EKSPORT / "model_export.pt"
+WYMIAR          = 128     # większy wymiar = więcej pojemności
+N_WARSTW        = 4        # więcej warstw = głębszy model
+N_GLOWIC        = 4        # głowice Multi-Head Attention
+DROPOUT         = 0.05     # mniej dropout = lepsze zapamiętanie
+EPOKI           = 3000     # więcej epok = lepsze zapamiętanie
+LR              = 0.001    # wyższy LR = szybsza nauka)
+MAKS_DLUGOSC    = 256      # dłuższy kontekst
+BATCH_SIZE      = 32       # ← NOWE
 
 # Przyspieszenie GPU – cuDNN automatycznie dobiera najszybszy algorytm
 import torch
@@ -68,6 +71,18 @@ def zapisz_cache(model, tokenizer, hash_pliku):
     torch.save(dane, PLIK_CACHE)
     eksportuj_model(model, tokenizer, hash_pliku)
 
+
+def znajdz_plik_eksportu():
+    kandydaci = [
+        PLIK_EKSPORTU,
+        Path("model_export.pt"),
+        Path("v1") / "model_export.pt",
+    ]
+    for sciezka in kandydaci:
+        if sciezka.exists():
+            return sciezka
+    return PLIK_EKSPORTU
+
 def wczytaj_cache(model, hash_pliku):
     """
     Wczytuje model z cache jeśli dane.json się nie zmieniło.
@@ -94,12 +109,14 @@ def wczytaj_cache(model, hash_pliku):
 
     return dane["tokenizer"], True
 
-def eksportuj_model(model, tokenizer, hash_pliku, sciezka="model_export.pt"):
+def eksportuj_model(model, tokenizer, hash_pliku, sciezka=PLIK_EKSPORTU):
     """
     Zapisuje skompresowany model do wysyłania na GitHuba.
     Rozmiar: ~5-20MB zamiast ~150MB
     """
     import torch
+    sciezka = Path(sciezka)
+    sciezka.parent.mkdir(parents=True, exist_ok=True)
     dane = {
         "hash":       hash_pliku,
         "tokenizer":  tokenizer,
@@ -118,14 +135,19 @@ def eksportuj_model(model, tokenizer, hash_pliku, sciezka="model_export.pt"):
     rozmiar = os.path.getsize(sciezka) / 1024 / 1024
     print(f"  📦 Eksport do '{sciezka}': {rozmiar:.1f} MB (gotowy na GitHub)")
 
-def wczytaj_eksport(model, sciezka="model_export.pt"):
+def wczytaj_eksport(model, sciezka=None):
     """
     Wczytuje skompresowany model na słabszym sprzęcie.
     """
     import torch
     from shared.transformer import URZADZENIE
 
-    if not os.path.exists(sciezka):
+    if sciezka is None:
+        sciezka = znajdz_plik_eksportu()
+
+    sciezka = Path(sciezka)
+
+    if not sciezka.exists():
         print(f"  ❌ Nie znaleziono '{sciezka}'")
         return None, False
 
@@ -289,7 +311,7 @@ if __name__ == "__main__":
         if eksport_ok:
             tokenizer = tokenizer_export
             model.ustaw_trening(False)
-            print("✅ Wczytano model_export.pt – pomijam trening\n")
+            print(f"✅ Wczytano {PLIK_EKSPORTU} – pomijam trening\n")
         else:
             # ── Brak cache i eksportu – trenujemy ──────────
             tokenizer  = tokenizer_temp
