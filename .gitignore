@@ -5,6 +5,8 @@ env/
 venv/
 .venv/
 .vscode/
+idea/
+.idea/
 *.pt
 model_cache.pkl
 *.pth

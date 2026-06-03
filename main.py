@@ -89,7 +89,7 @@ def wczytaj_cache(model, hash_pliku):
     Zwraca (tokenizer, True) lub (None, False).
     """
     import torch
-    from shared.transformer import URZADZENIE
+    from mini_gpt.transformer import URZADZENIE
 
     if not os.path.exists(PLIK_CACHE):
         return None, False
@@ -140,7 +140,7 @@ def wczytaj_eksport(model, sciezka=None):
     Wczytuje skompresowany model na słabszym sprzęcie.
     """
     import torch
-    from shared.transformer import URZADZENIE
+    from mini_gpt.transformer import URZADZENIE
 
     if sciezka is None:
         sciezka = znajdz_plik_eksportu()
@@ -178,7 +178,7 @@ def wczytaj_dane(sciezka):
 def cross_entropy_loss(logits, cel_ids):
     """Zostawiamy dla kompatybilności – używana tylko w starej wersji"""
     import numpy as np
-    from shared.transformer import softmax
+    from mini_gpt.transformer import softmax
     T     = len(cel_ids)
     probs = softmax(logits)
     probs = np.clip(probs, 1e-9, 1.0)
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     tokenizer_temp = Tokenizer()
     tokenizer_temp.buduj_slownik(zdania)
 
-    from shared.transformer import URZADZENIE
+    from mini_gpt.transformer import URZADZENIE
     model = MiniGPT(
         rozmiar_slownika = tokenizer_temp.rozmiar,
         wymiar           = WYMIAR,
@@ -317,6 +317,9 @@ if __name__ == "__main__":
             tokenizer  = tokenizer_temp
             zdania_ids = [tokenizer.koduj(z) for z in zdania]
             optymalizator = Adam(lr=LR, parametry=model.parameters())
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optymalizator._opt, T_max=EPOKI
+            )
 
             try:
                 from tqdm import tqdm
@@ -339,13 +342,40 @@ if __name__ == "__main__":
                 )
                 for epoka in pasek:
                     strata = trenuj(model, optymalizator, zdania_ids)
-                    pasek.set_postfix(strata=f"{strata:.4f}")
+                    scheduler.step()
+                    
+                    if epoka % 100 == 0:
+                        os.makedirs("checkpoints", exist_ok=True)
+                        torch.save({
+                            'epoch': epoka,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optymalizator._opt.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict(),
+                            'loss': strata,
+                        }, f"checkpoints/checkpoint_epoch_{epoka}.pt")
+                    
+                    perplexity = float(torch.exp(torch.tensor(strata)).item())
+                    pasek.set_postfix(strata=f"{strata:.4f}", perplexity=f"{perplexity:.2f}")
             else:
                 for epoka in range(1, EPOKI + 1):
                     strata = trenuj(model, optymalizator, zdania_ids)
+                    scheduler.step()
+                    
+                    if epoka % 100 == 0:
+                        os.makedirs("checkpoints", exist_ok=True)
+                        torch.save({
+                            'epoch': epoka,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optymalizator._opt.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict(),
+                            'loss': strata,
+                        }, f"checkpoints/checkpoint_epoch_{epoka}.pt")
+                        print(f"    💾 Checkpoint: epoch_{epoka}.pt")
+                    
                     if epoka % 100 == 0 or epoka == EPOKI:
+                        perplexity = float(torch.exp(torch.tensor(strata)).item())
                         proc = epoka / EPOKI * 100
-                        print(f"  Epoka {epoka}/{EPOKI} ({proc:.0f}%)  strata: {strata:.4f}")
+                        print(f"  Epoka {epoka}/{EPOKI} ({proc:.0f}%)  strata: {strata:.4f}  perplexity: {perplexity:.2f}")
 
             print("\n  ✅ Trening zakończony!")
             model.ustaw_trening(False)
