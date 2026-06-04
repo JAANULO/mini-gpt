@@ -17,7 +17,6 @@ import os
 import hashlib
 import random
 from pathlib import Path
-
 from mini_gpt.transformer import MiniGPT, Adam, softmax, URZADZENIE
 from mini_gpt.tokenizer   import Tokenizer
 
