@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>mini-GPT — Architektura</title>
+<style>
+  body { margin: 0; background: #0f172a; font-family: 'Segoe UI', monospace; color: #e2e8f0; }
+  h1 { text-align: center; padding: 24px 0 0; font-size: 20px; font-weight: 500; color: #a5b4fc; }
+  p.sub { text-align: center; font-size: 13px; color: #64748b; margin: 4px 0 16px; }
+  .canvas-wrap { display: flex; justify-content: center; overflow-x: auto; padding: 0 24px 40px; }
+  svg text { font-family: 'Segoe UI', monospace; }
+  .node { cursor: pointer; }
+  .node:hover rect { filter: brightness(1.15); }
+  .tooltip {
+    position: fixed; background: #1e293b; border: 1px solid #334155;
+    border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.7;
+    color: #e2e8f0; pointer-events: none; display: none; max-width: 320px;
+    white-space: pre-wrap; z-index: 100; box-shadow: 0 4px 24px #0008;
+  }
+  .legenda { display:flex; gap:20px; justify-content:center; flex-wrap:wrap;
+              font-size:12px; color:#94a3b8; padding-bottom:24px; }
+  .legenda span { display:flex; align-items:center; gap:6px; }
+  .legenda i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+</style>
+</head>
+<body>
+<h1>mini-GPT — Architektura modelu</h1>
+<p class="sub">Kliknij węzeł aby zobaczyć szczegóły · vocab=35 · d_model=128 · 4 warstwy · 4 głowice · ~830,592 parametrów</p>
+<div class="legenda">
+  <span><i style="background:#6366f1"></i> Wejście/wyjście</span>
+  <span><i style="background:#8b5cf6"></i> Embeddingi</span>
+  <span><i style="background:#2563eb"></i> GPT Block</span>
+  <span><i style="background:#0891b2"></i> Normalizacja</span>
+  <span><i style="background:#059669"></i> Projekcja wyjściowa</span>
+</div>
+<div class="canvas-wrap">
+<svg id="svg" width="900" height="1060" viewBox="0 0 900 1060">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#475569" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <path d="M450,76 L450,103 L280,103 L280,130" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M450,76 L450,103 L620,103 L620,130" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M280,190 L280,230 L450,230 L450,270" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M620,190 L620,230 L450,230 L450,270" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="450" y1="330" x2="450" y2="392" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="450" y1="608" x2="450" y2="690" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="450" y1="750" x2="450" y2="804" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="450" y1="876" x2="450" y2="944" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <g class="node" onclick="pokazTooltip(event, 'sekwencja tokenów\nshape: [B, T]\nT ≤ 256')">
+    <rect x="350" y="4" width="200" height="72" rx="10"
+          fill="#6366f1" fill-opacity="0.25"
+          stroke="#6366f1" stroke-width="1.5"/>
+    <text x="450" y="32" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#6366f1">Input</text>
+    <text x="450" y="50" text-anchor="middle" font-size="10" fill="#94a3b8">sekwencja tokenów</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'Embedding(vocab=35, dim=128)\nshape: [B, T, 128]')">
+    <rect x="170" y="130" width="220" height="60" rx="10"
+          fill="#8b5cf6" fill-opacity="0.25"
+          stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="280" y="152" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#8b5cf6">Token Embedding</text>
+    <text x="280" y="170" text-anchor="middle" font-size="10" fill="#94a3b8">Embedding(vocab=35, dim=128)</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'Embedding(max_len=256, dim=128)\nshape: [B, T, 128]')">
+    <rect x="510" y="130" width="220" height="60" rx="10"
+          fill="#8b5cf6" fill-opacity="0.25"
+          stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="620" y="152" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#8b5cf6">Positional Emb.</text>
+    <text x="620" y="170" text-anchor="middle" font-size="10" fill="#94a3b8">Embedding(max_len=256, dim=128)</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'tok_emb + pos_emb\nshape: [B, T, 128]')">
+    <rect x="340" y="270" width="220" height="60" rx="10"
+          fill="#a78bfa" fill-opacity="0.25"
+          stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="450" y="292" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#a78bfa">Add + Dropout</text>
+    <text x="450" y="310" text-anchor="middle" font-size="10" fill="#94a3b8">tok_emb + pos_emb</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, '── LayerNorm(128)\n── MultiHeadAttention\n     heads=4, d_head=32\n     Q/K/V shape: [B, T, 128]\n     attn shape: [B, 4, T, T]\n── Residual Add\n── LayerNorm(128)\n── FFN: 128→512→128\n── GELU + Dropout\n── Residual Add\noutput shape: [B, T, 128]')">
+    <rect x="260" y="392" width="380" height="216" rx="10"
+          fill="#2563eb" fill-opacity="0.25"
+          stroke="#2563eb" stroke-width="1.5"/>
+    <text x="450" y="492" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#2563eb">GPT Block × 4</text>
+    <text x="450" y="510" text-anchor="middle" font-size="10" fill="#94a3b8">── LayerNorm(128)</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'LayerNorm(128)\nshape: [B, T, 128]')">
+    <rect x="340" y="690" width="220" height="60" rx="10"
+          fill="#0891b2" fill-opacity="0.25"
+          stroke="#0891b2" stroke-width="1.5"/>
+    <text x="450" y="712" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#0891b2">LayerNorm</text>
+    <text x="450" y="730" text-anchor="middle" font-size="10" fill="#94a3b8">LayerNorm(128)</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'Linear(128 → 35, bias=False)\nWeight Tying z Token Emb.\nshape: [B, T, 35]')">
+    <rect x="310" y="804" width="280" height="72" rx="10"
+          fill="#0f766e" fill-opacity="0.25"
+          stroke="#0f766e" stroke-width="1.5"/>
+    <text x="450" y="832" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#0f766e">Linear Head</text>
+    <text x="450" y="850" text-anchor="middle" font-size="10" fill="#94a3b8">Linear(128 → 35, bias=False)</text>
+  </g>
+  <g class="node" onclick="pokazTooltip(event, 'rozkład prawdop. dla każdego tokenu\nshape: [B, T, 35]\nnastępnie: Top-k/Top-p sampling')">
+    <rect x="300" y="944" width="300" height="72" rx="10"
+          fill="#059669" fill-opacity="0.25"
+          stroke="#059669" stroke-width="1.5"/>
+    <text x="450" y="972" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#059669">Output Logits</text>
+    <text x="450" y="990" text-anchor="middle" font-size="10" fill="#94a3b8">rozkład prawdop. dla każdego tokenu</text>
+  </g>
+</svg>
+</div>
+<div class="tooltip" id="tooltip"></div>
+<script>
+function pokazTooltip(e, tekst) {
+  const t = document.getElementById('tooltip');
+  t.textContent = tekst.replace(/\n/g, '\n');
+  t.style.display = 'block';
+  t.style.left = (e.clientX + 16) + 'px';
+  t.style.top  = (e.clientY - 10) + 'px';
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.node')) {
+    document.getElementById('tooltip').style.display = 'none';
+  }
+});
+document.addEventListener('mousemove', function(e) {
+  const t = document.getElementById('tooltip');
+  if (t.style.display === 'block') {
+    t.style.left = (e.clientX + 16) + 'px';
+    t.style.top  = (e.clientY - 10) + 'px';
+  }
+});
+</script>
+</body>
+</html>

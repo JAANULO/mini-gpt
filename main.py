@@ -17,7 +17,7 @@ import os
 import hashlib
 import random
 from pathlib import Path
-from mini_gpt.transformer import MiniGPT, Adam, softmax, URZADZENIE
+from mini_gpt.transformer import MiniGPT, Adam, URZADZENIE
 from mini_gpt.tokenizer   import Tokenizer
 
 # ============================================================
@@ -25,9 +25,14 @@ from mini_gpt.tokenizer   import Tokenizer
 # ============================================================
 
 PLIK_DANYCH     = "data/dane.json"
-PLIK_CACHE      = "model_cache.pkl"
-KATALOG_EKSPORT = Path("exports")
+
+KATALOG_EKSPORT  = Path("exports")
 PLIK_EKSPORTU    = KATALOG_EKSPORT / "model_export.pt"
+KATALOG_OUTPUTS  = Path("outputs")
+PLIK_LOSS_CSV    = KATALOG_OUTPUTS / "loss_curve.csv"
+PLIK_LOSS_HTML   = KATALOG_OUTPUTS / "loss_curve.html"
+PLIK_CACHE       = Path("exports") / "model_cache.pkl"
+
 WYMIAR          = 128     # większy wymiar = więcej pojemności
 N_WARSTW        = 4        # więcej warstw = głębszy model
 N_GLOWIC        = 4        # głowice Multi-Head Attention
@@ -67,6 +72,7 @@ def zapisz_cache(model, tokenizer, hash_pliku):
             "maks_dlugosc":     model.maks_dlugosc,
         }
     }
+    PLIK_CACHE.parent.mkdir(exist_ok=True)
     torch.save(dane, PLIK_CACHE)
     eksportuj_model(model, tokenizer, hash_pliku)
 
@@ -90,12 +96,16 @@ def wczytaj_cache(model, hash_pliku):
     import torch
     from mini_gpt.transformer import URZADZENIE
 
-    if not os.path.exists(PLIK_CACHE):
+    if not PLIK_CACHE.exists():
         return None, False
 
     try:
-        dane = torch.load(PLIK_CACHE, map_location=URZADZENIE,weights_only=False)
-        model.load_state_dict(dane["state_dict"])  # ← przywraca wagi
+        dane = torch.load(PLIK_CACHE, map_location=URZADZENIE, weights_only=False)
+        model.load_state_dict(dane["state_dict"])
+    except ModuleNotFoundError:
+        print(f"  ⚠️  Stary format cache — usuwam '{PLIK_CACHE}' i trenuję od nowa.")
+        PLIK_CACHE.unlink()
+        return None, False
     except Exception:
         return None, False
 
@@ -150,13 +160,70 @@ def wczytaj_eksport(model, sciezka=None):
         print(f"  ❌ Nie znaleziono '{sciezka}'")
         return None, False
 
-    dane = torch.load(sciezka, map_location=URZADZENIE, weights_only=False)
+    try:
+        dane = torch.load(sciezka, map_location=URZADZENIE, weights_only=False)
+    except ModuleNotFoundError:
+        print(f"  ⚠️  Stary format eksportu — usuwam '{sciezka}' i trenuję od nowa.")
+        sciezka.unlink()
+        return None, False
+
     state = {k: v.float() for k, v in dane["state_dict"].items()}
     model.load_state_dict(state)
 
     rozmiar = os.path.getsize(sciezka) / 1024 / 1024
     print(f"  ✅ Wczytano eksport '{sciezka}' ({rozmiar:.1f} MB)")
     return dane["tokenizer"], True
+
+# ============================================================
+# DIAGNOSTYKA – zapis straty i wykres
+# ============================================================
+
+def zapisz_loss_csv(historia_strat):
+    """Zapisuje historię strat do CSV (epoka, strata, perplexity)."""
+    KATALOG_OUTPUTS.mkdir(exist_ok=True)
+    with open(PLIK_LOSS_CSV, "w", encoding="utf-8") as f:
+        f.write("epoka,strata,perplexity\n")
+        for epoka, strata in historia_strat:
+            perp = float(torch.exp(torch.tensor(strata)).item())
+            f.write(f"{epoka},{strata:.6f},{perp:.4f}\n")
+
+def generuj_wykres(historia_strat):
+    """Generuje interaktywny wykres HTML z Plotly."""
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        print("  ⚠️  Brak plotly – zainstaluj: pip install plotly")
+        return
+
+    epoki   = [e for e, _ in historia_strat]
+    straty  = [s for _, s in historia_strat]
+    perplxy = [float(torch.exp(torch.tensor(s)).item()) for _, s in historia_strat]
+
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=("Strata (Cross-Entropy Loss)", "Perplexity"),
+        vertical_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(x=epoki, y=straty, mode="lines", name="Loss",
+                   line=dict(color="#6366f1", width=1.5)),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=epoki, y=perplxy, mode="lines", name="Perplexity",
+                   line=dict(color="#f59e0b", width=1.5)),
+        row=2, col=1,
+    )
+    fig.update_layout(
+        title="Mini-GPT — krzywa uczenia",
+        template="plotly_dark",
+        height=600,
+        showlegend=False,
+        margin=dict(l=50, r=30, t=60, b=40),
+    )
+    fig.write_html(PLIK_LOSS_HTML)
+    print(f"  📈 Wykres zapisany: {PLIK_LOSS_HTML}")
 
 # ============================================================
 # KROK 1: WCZYTAJ DANE
@@ -219,7 +286,7 @@ def trenuj(model, optymalizator, zdania_ids):
     for _ in range(n_batchy):
         wejscie, cel = zbuduj_batch(zdania_ids, BATCH_SIZE, MAKS_DLUGOSC)
         optymalizator.zeruj_gradienty()
-        logits = model.forward(wejscie)          # (B, T, V)
+        logits, _ = model.forward(wejscie)       # (B, T, V)
         B, T, V = logits.shape
         strata = kryterium(logits.reshape(B * T, V), cel.reshape(B * T))
         calkowita_strata += strata.item()
@@ -228,6 +295,51 @@ def trenuj(model, optymalizator, zdania_ids):
         optymalizator.krok()
 
     return calkowita_strata / n_batchy
+
+# ============================================================
+# SAMPLING – Top-k i Top-p (nucleus sampling)
+# ============================================================
+
+def top_k_top_p_sampling(logits_np, top_k=0, top_p=1.0, temperatura=1.0):
+    """
+    Zaawansowane próbkowanie z rozkładu logitów.
+
+    top_k  — zostaw tylko k najbardziej prawdopodobnych tokenów (0 = wyłączone)
+    top_p  — zostaw tokeny których łączne prawdopodobieństwo <= p (1.0 = wyłączone)
+              nazywane też nucleus sampling
+    temperatura — skaluje rozkład przed próbkowaniem
+
+    Zwraca indeks wybranego tokenu (int).
+    """
+    logits = logits_np.astype(np.float64).copy()
+    logits = logits / max(temperatura, 0.01)
+
+    # Top-k: zeruj wszystko poza k największymi
+    # (top_k nie może przekroczyć rozmiaru słownika)
+    if top_k > 0:
+        k = min(top_k, len(logits))
+        prog = np.sort(logits)[-k]
+        logits[logits < prog] = -1e10
+
+    # Softmax
+    logits -= logits.max()
+    probs = np.exp(logits)
+    probs /= probs.sum()
+
+    # Top-p (nucleus): zostaw minimalny zestaw tokenów sumujący się do p
+    if top_p < 1.0:
+        posortowane_idx   = np.argsort(probs)[::-1]
+        skumulowane_probs = np.cumsum(probs[posortowane_idx])
+
+        # Znajdź próg — pierwszy indeks gdzie suma przekracza top_p
+        prog_idx = np.searchsorted(skumulowane_probs, top_p) + 1
+        odrzucone = posortowane_idx[prog_idx:]
+        probs[odrzucone] = 0.0
+        probs /= probs.sum()
+
+    if temperatura < 0.05:
+        return int(np.argmax(probs))
+    return int(np.random.choice(len(probs), p=probs))
 
 # ============================================================
 # KROK 4: GENEROWANIE TEKSTU
@@ -239,13 +351,12 @@ def generuj(model, tokenizer, tekst_start, max_znakow=60, temperatura=1.0):
     with torch.no_grad():
         for _ in range(max_znakow):
             wejscie = ids[-MAKS_DLUGOSC:]
-            logits  = model.forward(wejscie)
+            logits,_  = model.forward(wejscie)
 
             ostatnie = logits[-1].cpu().numpy()
-            ostatnie = ostatnie / max(temperatura, 0.01)
-            probs    = softmax(ostatnie)
-            nastepny = int(np.argmax(probs) if temperatura < 0.05
-                           else np.random.choice(len(probs), p=probs))
+            nastepny = top_k_top_p_sampling(
+                ostatnie, top_k=50, top_p=0.9, temperatura=temperatura
+            )
 
             ids.append(nastepny)
 
@@ -330,7 +441,9 @@ if __name__ == "__main__":
 
             print(f"⚙️  Trenuję przez {EPOKI} epok...\n")
 
+            historia_strat = []
             model.ustaw_trening(True)
+
             if ma_tqdm:
                 pasek = tqdm(
                     range(1, EPOKI + 1),
@@ -355,6 +468,8 @@ if __name__ == "__main__":
                     
                     perplexity = float(torch.exp(torch.tensor(strata)).item())
                     pasek.set_postfix(strata=f"{strata:.4f}", perplexity=f"{perplexity:.2f}")
+                    historia_strat.append((epoka, strata))
+                    
             else:
                 for epoka in range(1, EPOKI + 1):
                     strata = trenuj(model, optymalizator, zdania_ids)
@@ -370,7 +485,8 @@ if __name__ == "__main__":
                             'loss': strata,
                         }, f"checkpoints/checkpoint_epoch_{epoka}.pt")
                         print(f"    💾 Checkpoint: epoch_{epoka}.pt")
-                    
+                
+                    historia_strat.append((epoka, strata))
                     if epoka % 100 == 0 or epoka == EPOKI:
                         perplexity = float(torch.exp(torch.tensor(strata)).item())
                         proc = epoka / EPOKI * 100
@@ -379,7 +495,11 @@ if __name__ == "__main__":
             print("\n  ✅ Trening zakończony!")
             model.ustaw_trening(False)
             zapisz_cache(model, tokenizer, aktualny_hash)
-            print(f"  💾 Model zapisany do '{PLIK_CACHE}'\n")
+            print(f"  💾 Model zapisany do '{PLIK_CACHE}'")
+            zapisz_loss_csv(historia_strat)
+            print(f"  📊 CSV zapisany: {PLIK_LOSS_CSV}")
+            generuj_wykres(historia_strat)
+            print()
 
     # 4. Test
     print("🧪 Test generowania:")
@@ -460,11 +580,11 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             for _ in range(300):
-                logits = model.forward(ids[-MAKS_DLUGOSC:])
-                ostatnie = logits[-1].cpu().numpy() / max(temperatura, 0.01)
-                probs = softmax(ostatnie)
-                nastepny = int(np.argmax(probs) if temperatura < 0.05
-                               else np.random.choice(len(probs), p=probs))
+                logits, _ = model.forward(ids[-MAKS_DLUGOSC:])
+                ostatnie = logits[-1].cpu().numpy()
+                nastepny = top_k_top_p_sampling(
+                    ostatnie, top_k=50, top_p=0.9, temperatura=temperatura
+                )
                 ids.append(nastepny)
 
                 tekst = tokenizer.dekoduj(ids)

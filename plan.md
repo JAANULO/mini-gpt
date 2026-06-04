@@ -9,7 +9,8 @@
 
 ## 🟢 ŁATWE
 
-### #1 ✅ Gradient Clipping
+### #1  Gradient Clipping
+- `✅ DONE`
 - **Plik:** `main.py` — pętla treningowa, po `loss.backward()`
 - Obcina zbyt duże gradienty podczas treningu. Zapobiega "eksplodowaniu" wag modelu.
 ```python
@@ -18,20 +19,23 @@ torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
 ---
 
-### #2 ✅ Porządki w repo i nazewnictwo
+### #2  Porządki w repo i nazewnictwo
+- `✅ DONE`
 - **Pliki:** struktura katalogów (`.gitignore`, `exports/`, `tests/`)
 - Dodano `.gitignore`, katalog `exports/`, przeniesiono `model_export.pt` i `model_cache.pkl` do `exports/`, utworzono `tests/` i przeniesiono `test_gpu.py`.
 - Usunięto katalog `v1/` (zawierał tylko artefakty i cache).
 
 ---
 
-### #3 ⬜ Aktualizacja README i opisu na GitHubie
+### #3  Aktualizacja README i opisu na GitHubie
+- `⬜ TODO`
 - **Plik:** `README.md`
 - Profesjonalny opis projektu: bez emoji, poprawny język techniczny, sekcje: co to jest, jak uruchomić, architektura, przykłady użycia.
 
 ---
 
-### #4 ⬜ Learning Rate Scheduler
+### #4  Learning Rate Scheduler
+- `✅ DONE`
 - **Plik:** `main.py` — po inicjalizacji optymalizatora
 - Automatycznie zmniejsza tempo uczenia w trakcie treningu. Model uczy się szybciej na początku, stabilniej na końcu.
 ```python
@@ -42,7 +46,8 @@ scheduler.step()
 
 ---
 
-### #5 ⬜ Checkpoint Saving
+### #5  Checkpoint Saving
+- `✅ DONE`
 - **Plik:** `main.py` — pętla treningowa
 - **Nowy katalog:** `checkpoints/`
 - Zapis stanu modelu co N epok. Nie tracisz postępu przy awarii lub przerwaniu treningu.
@@ -58,7 +63,8 @@ if epoka % 100 == 0:
 
 ---
 
-### #6 🔶 Perplexity Metric
+### #6  Perplexity Metric
+- `🔶 PARTIAL`
 - **Plik:** `main.py` — po obliczeniu loss
 - Standardowa miara jakości modelu językowego. Im niższa wartość, tym lepiej model przewiduje następny token. Obecne logowanie przez `print`/`tqdm` — brak integracji z wykresami.
 ```python
@@ -68,7 +74,8 @@ print(f"Epoka {epoka} | Loss: {strata:.4f} | Perplexity: {perplexity:.2f}")
 
 ---
 
-### #7 🔶 Loss Curve (Plotly / CSV)
+### #7  Loss Curve (Plotly / CSV)
+- `✅ DONE`
 - **Plik:** `main.py` — pętla treningowa
 - **Nowy plik wyjściowy:** `loss_curve.html` lub `loss.csv`
 - Obecne logowanie strat przez `print`/`tqdm`. Do dodania: zapis do CSV i interaktywny wykres Plotly.
@@ -88,7 +95,8 @@ fig.write_html("loss_curve.html")
 
 ---
 
-### #8 🔶 Eksport do ONNX + Netron
+### #8  Eksport do ONNX + Netron
+- `🔶 PARTIAL`
 - **Plik źródłowy modelu:** `exports/model_export.pt`
 - **Klasa modelu:** `transformer.py` → `MiniGPT`
 - **Nowy skrypt:** `tools/export_onnx.py` (do utworzenia)
@@ -111,7 +119,8 @@ torch.onnx.export(model, dummy_input, "exports/model.onnx", opset_version=14)
 
 ## 🟡 ŚREDNIE
 
-### #9 ⬜ Attention Heatmap
+### #9  Attention Heatmap
+- `✅ DONE`
 - **Plik do modyfikacji:** `transformer.py` → klasa `GPTBlok` i `MultiheadAttention`
 - **Nowy skrypt:** `tools/visualize_attention.py` (do utworzenia)
 - **Nowy plik wyjściowy:** `attention_heatmap.png`
@@ -138,7 +147,8 @@ def plot_attention(attention_weights, tokens, head=0):
 
 ---
 
-### #10 ⬜ Embeddings tokenów 2D (PCA / t-SNE)
+### #10  Embeddings tokenów 2D (PCA / t-SNE)
+- `✅ DONE`
 - **Plik źródłowy:** `transformer.py` → warstwa `tok_emb` (embedding tokenów)
 - **Nowy skrypt:** `tools/visualize_embeddings.py` (do utworzenia)
 - **Nowy plik wyjściowy:** `embeddings_2d.html`
@@ -162,7 +172,8 @@ fig.write_html("embeddings_2d.html")
 
 ---
 
-### #11 ⬜ Top-k i Top-p Sampling
+### #11  Top-k i Top-p Sampling
+- `✅ DONE`
 - **Plik do modyfikacji:** `main.py` — funkcja generacji tekstu (tryb czatu)
 - Bardziej zaawansowane próbkowanie niż temperatura. Top-k bierze tylko k najbardziej prawdopodobnych tokenów. Top-p bierze tokeny których łączne prawdopodobieństwo przekracza p.
 ```python
@@ -186,7 +197,8 @@ def top_k_top_p_sampling(logits, top_k=50, top_p=0.9, temperature=1.0):
 
 ---
 
-### #12 ⬜ Tokenizer BPE
+### #12  Tokenizer BPE
+- `⬜ TODO` 
 - **Plik do zastąpienia:** `tokenizer.py` — obecna tokenizacja znak-po-znaku
 - **Nowy plik wyjściowy:** `tokenizer.model` + `tokenizer.vocab` (SentencePiece)
 - Byte Pair Encoding dzieli tekst na podsłowa. Mniejsze vocab, lepsza generalizacja niż char-level.
@@ -206,7 +218,8 @@ spm.SentencePieceTrainer.train(
 
 ---
 
-### #13 ⬜ Beam Search
+### #13  Beam Search
+- `⬜ TODO` 
 - **Plik do modyfikacji:** `main.py` — funkcja generacji tekstu (tryb czatu)
 - Algorytm generacji który rozważa N najlepszych ścieżek jednocześnie zamiast zachłannie brać jeden token. Daje spójniejszy tekst.
 - **⚠️ Uwaga:** wolniejszy niż sampling — używaj do showcase, nie w treningu.
@@ -215,7 +228,8 @@ spm.SentencePieceTrainer.train(
 
 ## 🔴 TRUDNE
 
-### #14 ⬜ Dane domenowe
+### #14  Dane domenowe
+- `⬜ TODO` 
 - **Plik do zastąpienia/rozbudowania:** `dane.json`
 - **Nowy katalog:** `data/` z pipeline'em preprocessing
 - Jakość danych decyduje o jakości SLM bardziej niż architektura. Potrzebujesz 1–10 MB tekstów z wybranej dziedziny.
@@ -227,14 +241,16 @@ spm.SentencePieceTrainer.train(
 
 ---
 
-### #15 ⬜ Refaktoryzacja pipeline danych
+### #15  Refaktoryzacja pipeline danych
+- `⬜ TODO` 
 - **Pliki do modyfikacji:** `dane.json`, `main.py` (ładowanie danych)
 - **Nowy katalog:** `data/` — surowe dane, przetworzone dane, skrypty preprocessing
 - Zdefiniować format danych, pipeline czyszczenia i preprocessing. Powiązane z #12 (BPE) i #14 (dane domenowe).
 
 ---
 
-### #16 ⬜ Skalowanie architektury
+### #16  Skalowanie architektury
+- `⬜ TODO` 
 - **Plik do modyfikacji:** `transformer.py` — parametry `MiniGPT`, `GPTBlok`
 - **Plik do modyfikacji:** `main.py` — konfiguracja hiperparametrów
 - Zwiększenie liczby warstw, głowic attention i wymiaru modelu.
@@ -251,7 +267,8 @@ spm.SentencePieceTrainer.train(
 
 ---
 
-### #17 ⬜ Instruction Tuning
+### #17  Instruction Tuning
+- `⬜ TODO` 
 - **Nowy plik danych:** `data/instruct_dataset.json`
 - **Plik do modyfikacji:** `main.py` — pętla treningowa (nowy tryb fine-tuning)
 - Doszkolenie na parach `pytanie → odpowiedź`. Zamienia model dokańczający tekst w model konwersacyjny. Wymaga danych QA.
@@ -265,7 +282,8 @@ spm.SentencePieceTrainer.train(
 
 ---
 
-### #18 ⬜ Fine-tuning gotowego SLM z LoRA (opcjonalnie)
+### #18  Fine-tuning gotowego SLM z LoRA (opcjonalnie)
+- `⬜ TODO` 
 - **Nowy skrypt:** `tools/lora_finetune.py` (do utworzenia)
 - **Niezależny od obecnej architektury** — używasz gotowego modelu z HuggingFace zamiast `transformer.py`
 - LoRA (Low-Rank Adaptation) trenuje tylko ~1% wag istniejącego modelu. Mieści się w 8GB VRAM.

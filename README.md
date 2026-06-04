@@ -1,62 +1,100 @@
-# 🤖 mini-gpt
+# mini-gpt — Transformer od zera
 
-> Eksperymentalna implementacja architektury Transformera (GPT) napisana od zera w PyTorch.
-
-Projekt ten jest środowiskiem badawczym ("research playground") przeznaczonym do nauki i eksperymentów z generatywnymi modelami językowymi. Został odseparowany od systemów produkcyjnych, aby zachować czystość i czytelność kodu.
+Eksperymentalna implementacja architektury GPT napisana od zera w PyTorch, bez użycia gotowych frameworków NLP. Projekt służy do nauki i zrozumienia jak działają duże modele językowe — od matematyki po kod.
 
 ---
 
-## 🚀 Kluczowe cechy
+## Architektura
 
-- **Autorska architektura**: Pełna implementacja bloków Transformera, mechanizmu Multi-Head Attention oraz LayerNorm bez korzystania z gotowych modeli.
-- **Lekkość**: Model zoptymalizowany pod kątem nauki na domowym procesorze lub karcie graficznej.
-- **Tryb rozmowy**: Interaktywny czat z modelem, który potrafi zapamiętywać kontekst (okno pamięci).
-- **Diagnostyka**: Wbudowane narzędzia do wizualizacji straty (loss) podczas treningu.
+Pełna implementacja dekodera Transformera (~831 000 parametrów):
+
+- Multi-Head Causal Attention z maską kauzalną
+- Feed-Forward Network z aktywacją GELU
+- Pre-Norm LayerNorm (normalizacja przed każdą operacją)
+- Learned Positional Embeddings
+- Weight Tying (współdzielone wagi embedding i głowy modelu)
+- Optymalizator AdamW z Cosine LR Scheduling
+
+Szczegółowy opis matematyczny w [MATEMATYKA.md](./MATEMATYKA.md).
 
 ---
 
-## 🛠️ Instalacja i uruchomienie
+## Instalacja
 
-### Wymagania
-- Python 3.12+
-- PyTorch
-- NumPy
-- tqdm (opcjonalnie)
-
-### Szybki start
 ```bash
-# 1. Zainstaluj zależności
 pip install -r requirements.txt
-
-# 2. Uruchom trening i czat
 python main.py
 ```
 
-### Struktura katalogów
-- `main.py` — Główny punkt wejścia (trening + czat).
-- `mini_gpt/` — Rdzeń architektury:
-  - `transformer.py` — Model Transformera
-  - `tokenizer.py` — Kodowanie/dekodowanie znaków
-- `data/dane.json` — Zbiór danych treningowych.
-- `exports/` — Eksportowane modele:
-  - `model_export.pt` — Skompresowany model
-  - `model_cache.pkl` — Cache treningu
-- `tests/` — Diagnostyka i testy (np. `test_gpu.py`)
-- `dane/` — Przygotowane dane (Gemini activity export)
-
-### Komendy w czacie
-- `/temp 0.1` — Zmiana temperatury generowania (0.01=deterministyczne, 1.0=losowe)
-- `/historia` — Podgląd aktualnego kontekstu pamięci
-- `/zapomnij` — Wyczyszczenie historii rozmowy
-- `/pomoc` — Wyświetl dostępne komendy
-- `koniec` — Zamknięcie programu
+Wymagania: Python 3.10+, PyTorch, NumPy, tqdm, plotly, scikit-learn, onnx.
 
 ---
 
-## 🧠 Dokumentacja matematyczna
-Szczegółowy opis wzorów matematycznych i architektury znajdziesz w pliku [MATEMATYKA.md](./MATEMATYKA.md).
+## Struktura projektu
+
+```
+mini_gpt/
+  transformer.py     # architektura modelu (GPTBlok, MiniGPT)
+  tokenizer.py       # character-level tokenizer
+data/
+  dane.json          # zbiór danych treningowych
+tools/
+  visualize_attention.py   # heatmapa wag attention
+  visualize_embeddings.py  # wizualizacja embeddingów tokenów (PCA 2D)
+  export_onnx.py           # eksport modelu do formatu ONNX
+exports/
+  model_export.pt    # skompresowany model (float16)
+  model_cache.pkl    # cache treningu
+outputs/
+  loss_curve.csv     # historia straty i perplexity
+  loss_curve.html    # interaktywny wykres treningu (Plotly)
+  attention_heatmap.html   # wizualizacja attention
+  embeddings_2d.html       # embeddingi tokenów w przestrzeni 2D
+  model.onnx               # graf architektury (otwórz na netron.app)
+checkpoints/
+  checkpoint_epoch_N.pt    # checkpointy co 100 epok
+tests/
+  test_gpu.py        # test dostępności GPU i benchmark CUDA
+main.py              # trening + interaktywny czat
+MATEMATYKA.md        # dokumentacja matematyczna architektury
+```
 
 ---
 
-## 📋 Plan Rozwoju
-Szczegółowy roadmapa i bieżący stan implementacji w [plan.md](./plan.md).
+## Narzędzia diagnostyczne
+
+Po treningu (`python main.py`) dostępne są trzy narzędzia wizualizacyjne:
+
+```bash
+# Krzywa uczenia — loss i perplexity przez epoki
+# (generuje się automatycznie po treningu)
+# outputs/loss_curve.html
+
+# Heatmapa wag attention dla podanego tekstu
+python tools/visualize_attention.py "co to jest warszawa"
+
+# Embeddingi tokenów zredukowane do 2D przez PCA
+python tools/visualize_embeddings.py
+
+# Graf architektury modelu (wymaga: pip install onnx)
+python tools/export_onnx.py
+# Następnie wgraj outputs/model.onnx na https://netron.app
+```
+
+---
+
+## Komendy czatu
+
+| Komenda | Opis |
+|---|---|
+| `/temp 0.1` | temperatura generowania (0.01 = deterministyczne, 1.0 = losowe) |
+| `/historia` | podgląd aktualnego kontekstu pamięci |
+| `/zapomnij` | wyczyszczenie historii rozmowy |
+| `/pomoc` | lista dostępnych komend |
+| `koniec` | zamknięcie programu |
+
+---
+
+## Plan rozwoju
+
+Szczegółowa roadmapa w [plan.md](./plan.md).

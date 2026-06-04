@@ -39,7 +39,7 @@ class GPTBlok(nn.Module):
 			nn.Dropout(dropout),
 		)
 
-	def forward(self, x):
+	def forward(self, x, zwroc_attn=False):
 		T = x.shape[1]
 		# Maska causalna
 		maska = torch.triu(
@@ -48,12 +48,16 @@ class GPTBlok(nn.Module):
 
 		# Self-Attention z residual
 		x2 = self.ln1(x)
-		x2, _ = self.attn(x2, x2, x2, attn_mask=maska, is_causal=True)
+		x2, attn_wagi = self.attn(x2, x2, x2, attn_mask=maska, is_causal=True,
+								  need_weights=True, average_attn_weights=False)
 		x = x + x2
 
 		# Feed-Forward z residual
 		x = x + self.ff(self.ln2(x))
-		return x
+
+		if zwroc_attn:
+			return x, attn_wagi  # attn_wagi: (B, n_glowic, T, T)
+		return x, None
 
 
 # ────────────────────────────────────────────────────────────
@@ -70,8 +74,8 @@ class MiniGPT(nn.Module):
 		self.tok_emb = nn.Embedding(rozmiar_slownika, wymiar)
 		self.pos_emb = nn.Embedding(maks_dlugosc, wymiar)
 		self.drop    = nn.Dropout(dropout)
-		self.bloki   = nn.Sequential(
-			*[GPTBlok(wymiar, n_glowic, dropout) for _ in range(n_warstw)]
+		self.bloki   = nn.ModuleList(
+			[GPTBlok(wymiar, n_glowic, dropout) for _ in range(n_warstw)]
 		)
 		self.ln_f    = nn.LayerNorm(wymiar)
 		self.glowa   = nn.Linear(wymiar, rozmiar_slownika, bias=False)
@@ -112,14 +116,19 @@ class MiniGPT(nn.Module):
 
 		poz = torch.arange(T, device=URZADZENIE)
 		x = self.drop(self.tok_emb(ids) + self.pos_emb(poz))
-		x = self.bloki(x)
+
+		wszystkie_attn = []
+		for blok in self.bloki:
+			x, attn = blok(x, zwroc_attn=True)
+			wszystkie_attn.append(attn)
+
 		x = self.ln_f(x)
 		logits = self.glowa(x)
 
 		if not tryb_batch:
 			logits = logits.squeeze(0)
 
-		return logits
+		return logits, wszystkie_attn
 
 	def ustaw_trening(self, trening=True):
 		self.train() if trening else self.eval()

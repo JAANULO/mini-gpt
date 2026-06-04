@@ -1,5 +1,7 @@
-# Mini-GPT Research Requirements
 torch
 numpy
 tqdm
 requests
+plotly
+scikit-learn
+onnx
