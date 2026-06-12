@@ -61,7 +61,6 @@ def zapisz_cache(model, tokenizer, hash_pliku):
     Zapisuje model PyTorch i tokenizer.
     Używamy torch.save – to właściwy sposób zapisu modeli PyTorch.
     """
-    import torch
     dane = {
         "hash":        hash_pliku,
         "tokenizer":   tokenizer,
@@ -93,9 +92,6 @@ def wczytaj_cache(model, hash_pliku):
     Wczytuje model z cache jeśli dane.json się nie zmieniło.
     Zwraca (tokenizer, True) lub (None, False).
     """
-    import torch
-    from mini_gpt.transformer import URZADZENIE
-
     if not PLIK_CACHE.exists():
         return None, False
 
@@ -123,7 +119,6 @@ def eksportuj_model(model, tokenizer, hash_pliku, sciezka=PLIK_EKSPORTU):
     Zapisuje skompresowany model do wysyłania na GitHuba.
     Rozmiar: ~5-20MB zamiast ~150MB
     """
-    import torch
     sciezka = Path(sciezka)
     sciezka.parent.mkdir(parents=True, exist_ok=True)
     dane = {
@@ -148,9 +143,6 @@ def wczytaj_eksport(model, sciezka=None):
     """
     Wczytuje skompresowany model na słabszym sprzęcie.
     """
-    import torch
-    from mini_gpt.transformer import URZADZENIE
-
     if sciezka is None:
         sciezka = znajdz_plik_eksportu()
 
@@ -549,29 +541,6 @@ if __name__ == "__main__":
         czesci.append(f"użytkownik {nowe_pytanie} asystent")
 
         return " ".join(czesci)
-
-    # Mapa polskich znaków – naprawia literówki bez ogonków
-    BEZ_OGONKOW = {
-        "a": "ą", "c": "ć", "e": "ę", "l": "ł", "n": "ń",
-        "o": "ó", "s": "ś", "z": "ź", "x": "ż",
-    }
-
-    def napraw_ogonki(slowo):
-        """
-        Próbuje dopasować słowo bez ogonków do słownika modelu.
-        Przykład: "jestes" → "jesteś", "czesc" → "cześć"
-        """
-        if tokenizer.koduj(slowo)[0] != tokenizer.UNK:
-            return slowo  # słowo znane – nie zmieniaj
-
-        # Spróbuj podmienić ostatnią literę na wersję z ogonkiem
-        for i, litera in enumerate(slowo):
-            if litera in BEZ_OGONKOW:
-                kandydat = slowo[:i] + BEZ_OGONKOW[litera] + slowo[i+1:]
-                if tokenizer.koduj(kandydat)[0] != tokenizer.UNK:
-                    return kandydat
-        return slowo  # nie znaleziono – zwróć oryginał
-
 
     def generuj_odpowiedz(pytanie, historia, temperatura):
         pytanie = pytanie.lower().strip().rstrip("?")

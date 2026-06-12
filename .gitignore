@@ -15,3 +15,15 @@ build/
 __MACOSX/
 *.egg-info/
 .DS_Store
+
+# Wygenerowane pliki i modele
+checkpoints/
+exports/
+outputs/
+*.onnx
+
+# Dane i logi
+data/
+dane/*.json
+dane/*.jsonl
+dane/*.md
