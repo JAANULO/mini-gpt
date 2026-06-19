@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mini_gpt.transformer import URZADZENIE
+from mini_gpt.utils import DEVICE
 
 PLIK_CACHE      = Path("exports") / "model_cache.pkl"
 KATALOG_OUTPUTS = Path("outputs")

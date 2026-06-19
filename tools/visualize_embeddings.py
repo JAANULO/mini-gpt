@@ -11,7 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mini_gpt.transformer import MiniGPT, URZADZENIE
+from mini_gpt.transformer import MiniGPT
+from mini_gpt.utils import DEVICE
 from mini_gpt.tokenizer import Tokenizer
 
 PLIK_CACHE      = Path("exports") / "model_cache.pkl"
@@ -23,13 +24,13 @@ def wczytaj_model():
     if not PLIK_CACHE.exists():
         print("❌ Brak exports/model_cache.pkl — uruchom najpierw main.py")
         sys.exit(1)
-    dane = torch.load(PLIK_CACHE, map_location=URZADZENIE, weights_only=False)
+    dane = torch.load(PLIK_CACHE, map_location=DEVICE, weights_only=False)
     cfg  = dane["config"]
     model = MiniGPT(
         rozmiar_slownika = cfg["rozmiar_slownika"],
         wymiar           = cfg["wymiar"],
         maks_dlugosc     = cfg["maks_dlugosc"],
-    ).to(URZADZENIE)
+    ).to(DEVICE)
     model.load_state_dict(dane["state_dict"])
     model.eval()
     return model, dane["tokenizer"]

@@ -5,3 +5,10 @@ requests
 plotly
 scikit-learn
 onnx
+flask
+flask-cors
+mlflow
+dvc
+pyspark
+langchain
+langchain-core

@@ -13,11 +13,12 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mini_gpt.transformer import MiniGPT, URZADZENIE
+from mini_gpt.transformer import MiniGPT
+from mini_gpt.utils import DEVICE
 
 PLIK_CACHE      = Path("exports") / "model_cache.pkl"
-KATALOG_OUTPUTS = Path("outputs")
-PLIK_ONNX       = KATALOG_OUTPUTS / "model.onnx"
+KATALOG_EXPORTS = Path("exports")
+PLIK_ONNX       = KATALOG_EXPORTS / "model.onnx"
 
 DLUGOSC_WEJSCIA = 16  # liczba tokenów w przykładowym wejściu
 
@@ -27,13 +28,13 @@ def wczytaj_model():
         print("❌ Brak exports/model_cache.pkl — uruchom najpierw main.py")
         sys.exit(1)
 
-    dane = torch.load(PLIK_CACHE, map_location=URZADZENIE, weights_only=False)
+    dane = torch.load(PLIK_CACHE, map_location=DEVICE, weights_only=False)
     cfg  = dane["config"]
     model = MiniGPT(
         rozmiar_slownika = cfg["rozmiar_slownika"],
         wymiar           = cfg["wymiar"],
         maks_dlugosc     = cfg["maks_dlugosc"],
-    ).to(URZADZENIE)
+    ).to(DEVICE)
     model.load_state_dict(dane["state_dict"])
     model.eval()
     print(f"✅ Model wczytany — {sum(p.numel() for p in model.parameters()):,} parametrów")
@@ -47,11 +48,11 @@ def eksportuj_onnx(model, tokenizer):
         print("❌ Brak onnx — zainstaluj: pip install onnx")
         sys.exit(1)
 
-    KATALOG_OUTPUTS.mkdir(exist_ok=True)
+    KATALOG_EXPORTS.mkdir(exist_ok=True)
 
     # Przykładowe wejście — sekwencja tokenów
     dlugosc  = min(DLUGOSC_WEJSCIA, tokenizer.rozmiar - 1)
-    dummy    = torch.zeros(1, dlugosc, dtype=torch.long, device=URZADZENIE)
+    dummy    = torch.zeros(1, dlugosc, dtype=torch.long, device=DEVICE)
 
     print(f"📐 Eksportuję z wejściem shape: {list(dummy.shape)}")
 

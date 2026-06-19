@@ -11,7 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mini_gpt.transformer import MiniGPT, URZADZENIE
+from mini_gpt.transformer import MiniGPT
+from mini_gpt.utils import DEVICE
 from mini_gpt.tokenizer import Tokenizer
 
 PLIK_CACHE       = Path("exports") / "model_cache.pkl"
@@ -22,13 +23,13 @@ def wczytaj_model():
     if not PLIK_CACHE.exists():
         print(f"❌ Brak {PLIK_CACHE} — uruchom najpierw main.py")
         sys.exit(1)
-    dane = torch.load(PLIK_CACHE, map_location=URZADZENIE, weights_only=False)
+    dane = torch.load(PLIK_CACHE, map_location=DEVICE, weights_only=False)
     cfg  = dane["config"]
     model = MiniGPT(
         rozmiar_slownika = cfg["rozmiar_slownika"],
         wymiar           = cfg["wymiar"],
         maks_dlugosc     = cfg["maks_dlugosc"],
-    ).to(URZADZENIE)
+    ).to(DEVICE)
     model.load_state_dict(dane["state_dict"])
     model.eval()
     return model, dane["tokenizer"]
@@ -37,9 +38,9 @@ def generuj_heatmapy(tekst, model, tokenizer):
     ids    = tokenizer.koduj(tekst)
     tokeny = [tokenizer.id_na_slowo.get(i, "?") for i in ids]
 
-    wejscie = torch.tensor(ids, dtype=torch.long, device=URZADZENIE)
+    wejscie = torch.tensor(ids, dtype=torch.long, device=DEVICE)
     with torch.no_grad():
-        _, wszystkie_attn = model.forward(wejscie)
+        _, wszystkie_attn = model.forward(wejscie, return_attn=True)
 
     return tokeny, wszystkie_attn
 

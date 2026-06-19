@@ -23,7 +23,7 @@ Szczegółowy opis matematyczny w [MATEMATYKA.md](./MATEMATYKA.md).
 
 ```bash
 pip install -r requirements.txt
-python main.py
+python train.py
 ```
 
 Wymagania: Python 3.10+, PyTorch, NumPy, tqdm, plotly, scikit-learn, onnx.
@@ -35,12 +35,17 @@ Wymagania: Python 3.10+, PyTorch, NumPy, tqdm, plotly, scikit-learn, onnx.
 ```
 mini_gpt/
   transformer.py     # architektura modelu (GPTBlok, MiniGPT)
-  tokenizer.py       # character-level tokenizer
+  tokenizer.py       # SentencePiece BPE tokenizer loader
+  utils.py           # Narzędzia pomocnicze i ładowanie wag
 data/
-  dane.json          # zbiór danych treningowych
+  dane.json          # zbiór danych w formacie JSON
+  prepare_corpus.py  # wyciąganie tekstu z JSON do formatu text
+  raw_corpus.txt     # wygenerowany plik pod trening tokenizera
 tools/
+  train_tokenizer.py       # trenowanie tokenizera BPE
   visualize_attention.py   # heatmapa wag attention
   visualize_embeddings.py  # wizualizacja embeddingów tokenów (PCA 2D)
+  plot_metrics.py          # wykresy perplexity i straty
   export_onnx.py           # eksport modelu do formatu ONNX
 exports/
   model_export.pt    # skompresowany model (float16)
@@ -53,17 +58,18 @@ outputs/
   model.onnx               # graf architektury (otwórz na netron.app)
 checkpoints/
   checkpoint_epoch_N.pt    # checkpointy co 100 epok
-tests/
-  test_gpu.py        # test dostępności GPU i benchmark CUDA
-main.py              # trening + interaktywny czat
+app.py               # aplikacja Flask i API UI
+chat.py              # CLI z historią pamięci konwersacji
+train.py             # główny pipeline treningowy (z automatycznym treningiem BPE)
 MATEMATYKA.md        # dokumentacja matematyczna architektury
+WYKLADY_POWIAZANIA.md # korelacja projektu z zajęciami Big Data
 ```
 
 ---
 
 ## Narzędzia diagnostyczne
 
-Po treningu (`python main.py`) dostępne są trzy narzędzia wizualizacyjne:
+Po treningu (`python train.py`) dostępne są trzy narzędzia wizualizacyjne:
 
 ```bash
 # Krzywa uczenia — loss i perplexity przez epoki

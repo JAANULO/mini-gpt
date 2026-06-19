@@ -23,7 +23,11 @@ outputs/
 *.onnx
 
 # Dane i logi
-data/
-dane/*.json
-dane/*.jsonl
-dane/*.md
+data/*.json
+data/*.txt
+data/*.jsonl
+data/*.md
+
+# Śledzenie eksperymentów
+mlruns/
+/data

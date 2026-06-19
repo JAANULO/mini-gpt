@@ -1,0 +1,23 @@
+paths:
+  data_file: "data/dane.json"
+  export_dir: "exports"
+  outputs_dir: "outputs"
+  tokenizer_model: "exports/tokenizer.model"
+  model_export: "exports/model_export.pt"
+  model_cache: "exports/model_cache.pkl"
+
+model:
+  embed_dim: 128
+  num_layers: 4
+  num_heads: 8
+  dropout: 0.05
+  max_length: 256
+
+training:
+  epochs: 3000
+  lr: 0.001
+  batch_size: 32
+
+chat:
+  memory_window: 3
+  default_temp: 0.1

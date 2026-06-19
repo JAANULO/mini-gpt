@@ -1,49 +1,39 @@
-# ============================================================
-#  TOKENIZER – zamienia słowa na liczby i z powrotem
-#
-#  Dlaczego potrzebujemy tokenizera?
-#  Sieć neuronowa nie rozumie słów – rozumie LICZBY.
-#  Tokenizer to "słownik" między językiem a matematyką.
-#
-#  Przykład:
-#    "warszawa jest stolicą" → [4, 2, 3]
-#    [4, 2, 3]               → "warszawa jest stolicą"
-# ============================================================
+import sentencepiece as spm
+import logging
+from typing import List
+
+logger = logging.getLogger("mini_gpt")
 
 class Tokenizer:
-	def __init__(self):
-		self.slowo_na_id = {}   # "kot" → 5
-		self.id_na_slowo = {}   # 5 → "kot"
-		self.rozmiar = 0
+    def __init__(self):
+        self.sp = spm.SentencePieceProcessor()
+        self.vocab_size = 0
+        self.PAD = 0
+        self.UNK = 1
 
-		# Specjalne tokeny
-		self.PAD = 0   # padding – wypełnienie do równej długości
-		self.UNK = 1   # unknown – nieznane słowo
+    def load(self, model_path: str = "exports/tokenizer.model") -> bool:
+        try:
+            self.sp.load(model_path)
+            self.vocab_size = self.sp.get_piece_size()
+            logger.info(f"Wczytano tokenizer BPE, rozmiar słownika: {self.vocab_size}")
+            return True
+        except Exception as e:
+            logger.error(f"Nie udało się wczytać tokenizera z {model_path}: {e}")
+            return False
 
-		self.slowo_na_id["<PAD>"] = self.PAD
-		self.slowo_na_id["<UNK>"] = self.UNK
-		self.id_na_slowo[self.PAD] = "<PAD>"
-		self.id_na_slowo[self.UNK] = "<UNK>"
-		self.rozmiar = 2
+    @property
+    def id_to_word(self):
+        # Fake dictionary for UI visualization compatibility (math_step)
+        if self.vocab_size == 0:
+            return {}
+        return {i: self.sp.id_to_piece(i).replace(" ", " ") for i in range(self.vocab_size)}
 
-	def buduj_slownik(self, zdania):
-		"""
-		Przechodzi przez wszystkie zdania i buduje słownik.
-		Każde nowe słowo dostaje unikalny numer (ID).
-		"""
-		for zdanie in zdania:
-			for slowo in zdanie.lower():
+    def encode(self, text: str) -> List[int]:
+        if self.vocab_size == 0:
+            return []
+        return self.sp.encode_as_ids(text)
 
-				if slowo not in self.slowo_na_id:
-					self.slowo_na_id[slowo] = self.rozmiar
-					self.id_na_slowo[self.rozmiar] = slowo
-					self.rozmiar += 1
-
-		print(f"  📖 Słownik: {self.rozmiar} unikalnych tokenów")
-
-	def koduj(self, tekst):
-		return [self.slowo_na_id.get(z, self.UNK) for z in tekst.lower()]
-
-	def dekoduj(self, ids):
-		znaki = [self.id_na_slowo.get(i, "?") for i in ids]
-		return "".join(znaki)
+    def decode(self, ids: List[int]) -> str:
+        if self.vocab_size == 0:
+            return ""
+        return self.sp.decode_ids(ids)
