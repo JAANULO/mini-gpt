@@ -12,3 +12,10 @@ dvc
 pyspark
 langchain
 langchain-core
+transformers
+peft
+trl
+accelerate
+bitsandbytes
+datasets
+pyyaml

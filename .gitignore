@@ -31,3 +31,10 @@ data/*.md
 # Śledzenie eksperymentów
 mlruns/
 /data
+
+scratch/
+
+# Prywatne dane Messengera i wagi fine-tuningu
+data/messenger_inbox/
+exports/finetuned_qwen/
+

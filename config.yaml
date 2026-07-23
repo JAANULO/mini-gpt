@@ -5,6 +5,8 @@ paths:
   tokenizer_model: "exports/tokenizer.model"
   model_export: "exports/model_export.pt"
   model_cache: "exports/model_cache.pkl"
+  messenger_raw_dir: "data/messenger_inbox"
+  conversations_jsonl: "data/conversations.jsonl"
 
 model:
   embed_dim: 128
@@ -21,3 +23,23 @@ training:
 chat:
   memory_window: 3
   default_temp: 0.1
+
+filtering:
+  user_name: "Janusz Andrzejewski"
+  min_length: 4
+  max_age_years: 3
+  max_gap_minutes: 15
+
+finetuning:
+  base_model: "Qwen/Qwen2.5-3B-Instruct"
+  output_dir: "exports/finetuned_qwen"
+  epochs: 3
+  batch_size: 1
+  max_length: 512
+  lr: 0.0002
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  co_training_dataset: "m-a-p/CodeFeedback-Filtered-Instruction"
+  co_training_samples: 1000
+  system_prompt: "You are an AI assistant configured to talk and act like Janusz Andrzejewski. Use his writing style, slang, and formatting preferences in Polish."
